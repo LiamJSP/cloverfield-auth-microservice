@@ -1,5 +1,14 @@
 version: 0.2
 
+env:
+  secrets-manager:
+    JWT_SECRET: "prodauthmsdbinfo:JWT_SECRET"
+    AUTHY_API_KEY: "prodauthmsdbinfo:AUTHY_API_KEY"
+    DB_USERNAME: "prodauthmsdbinfo:DB_USERNAME"
+    DB_PASSWORD: "prodauthmsdbinfo:DB_PASSWORD"
+    AWS_ACCESS_KEY_ID: "prodauthmsdbinfo:AWS_ACCESS_KEY_ID"
+    AWS_SECRET_ACCESS_KEY: "prodauthmsdbinfo:AWS_SECRET_ACCESS_KEY"
+
 phases:
   install:
     commands:
