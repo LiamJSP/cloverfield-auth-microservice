@@ -8,7 +8,7 @@
     "start": "node dist/index.js",
     "dev": "nodemon --watch 'src/**/*.ts' --ignore 'src/**/*.spec.ts' --exec 'ts-node' src/index.ts",
     "build": "tsc",
-    "deploy": "sls deploy"
+    "deploy": "sls deploy || sls remove"
   },
   "keywords": [],
   "author": "",
