@@ -4,7 +4,7 @@ provider:
   name: aws
   runtime: nodejs18.x
   stage: dev
-  tags:
+  stackTags:
     CreatedBy: CloverfieldAuthMS
   region: us-east-1
   environment:
