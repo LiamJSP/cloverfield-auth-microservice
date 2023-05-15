@@ -5,7 +5,6 @@ provider:
   runtime: nodejs18.x
   stage: dev
   region: us-east-1
-  role: AuthMicroserviceLambdaExecutionRole
   environment:
     JWT_SECRET: ${env:JWT_SECRET}
     TOKEN_EXPIRATION_TIME: ${env:TOKEN_EXPIRATION_TIME}
@@ -90,15 +89,27 @@ resources:
           - Key: Name
             Value: MyVPC
 
-    MySubnet:
+    MySubnetA:
       Type: "AWS::EC2::Subnet"
       Properties:
         VpcId: !Ref MyVPC
         CidrBlock: "10.0.1.0/24"
+        AvailabilityZone: "us-east-1a"
         MapPublicIpOnLaunch: true
         Tags:
           - Key: Name
-            Value: MySubnet
+            Value: "MySubnetA"
+
+    MySubnetB:
+      Type: "AWS::EC2::Subnet"
+      Properties:
+        VpcId: !Ref MyVPC
+        CidrBlock: "10.0.2.0/24"
+        AvailabilityZone: "us-east-1b"
+        MapPublicIpOnLaunch: true
+        Tags:
+          - Key: Name
+            Value: "MySubnetB"
 
     MyInternetGateway:
       Type: "AWS::EC2::InternetGateway"
@@ -129,10 +140,16 @@ resources:
         DestinationCidrBlock: "0.0.0.0/0"
         GatewayId: !Ref MyInternetGateway
 
-    SubnetRouteTableAssociation:
+    SubnetRouteTableAssociationA:
       Type: "AWS::EC2::SubnetRouteTableAssociation"
       Properties:
-        SubnetId: !Ref MySubnet
+        SubnetId: !Ref MySubnetA
+        RouteTableId: !Ref MyRouteTable
+
+    SubnetRouteTableAssociationB:
+      Type: "AWS::EC2::SubnetRouteTableAssociation"
+      Properties:
+        SubnetId: !Ref MySubnetB
         RouteTableId: !Ref MyRouteTable
 
     RDSInstance:
@@ -165,4 +182,5 @@ resources:
       Properties:
         DBSubnetGroupDescription: Subnets available for the RDS DB Instance
         SubnetIds:
-          - !Ref MySubnet
+          - !Ref MySubnetA
+          - !Ref MySubnetB
