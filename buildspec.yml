@@ -1,0 +1,14 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - npm install --legacy-peer-deps
+      - npm install -g serverless
+  build:
+    commands:
+      - npm run build
+  post_build:
+    commands:
+      - serverless config credentials --provider aws --key $AWS_ACCESS_KEY_ID --secret $AWS_SECRET_ACCESS_KEY
+      - serverless deploy

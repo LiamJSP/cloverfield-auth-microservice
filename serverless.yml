@@ -1,0 +1,168 @@
+service: your-service-name
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  stage: dev
+  region: us-east-1
+  role: AuthMicroserviceLambdaExecutionRole
+  environment:
+    JWT_SECRET: ${env:JWT_SECRET}
+    TOKEN_EXPIRATION_TIME: ${env:TOKEN_EXPIRATION_TIME}
+    AUTHY_API_KEY: ${env:AUTHY_API_KEY}
+    DB_HOST: !GetAtt RDSInstance.Endpoint.Address
+    DB_PORT: !GetAtt RDSInstance.Endpoint.Port
+    DB_USERNAME: ${env:DB_USERNAME}
+    DB_PASSWORD: ${env:DB_PASSWORD}
+    DB_NAME: ${env:DB_NAME}
+
+functions:
+  app:
+    handler: dist/lambda/handler.main
+    events:
+      - http: ANY /
+      - http: ANY /{proxy+}
+  register:
+    handler: dist/lambda/handler.main
+    events:
+      - http:
+          path: register
+          method: post
+  login:
+    handler: dist/lambda/handler.main
+    events:
+      - http:
+          path: login
+          method: post
+  isTokenValid:
+    handler: dist/lambda/handler.main
+    events:
+      - http:
+          path: isTokenValid
+          method: get
+
+plugins:
+  - serverless-offline
+  - serverless-dotenv-plugin
+
+custom:
+  serverless-offline:
+    httpPort: 3006
+
+resources:
+  Resources:
+    AuthMicroserviceLambdaExecutionRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action:
+                - sts:AssumeRole
+        Policies:
+          - PolicyName: AuthMicroserviceLambdaExecutionPolicy
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - iam:PassRole
+                  Resource:
+                    - !Sub arn:aws:iam::${AWS::AccountId}:role/${self:service}-${self:provider.stage}-lambdaRole
+                    - !Sub arn:aws:iam::${AWS::AccountId}:role/${self:service}-${self:provider.stage}-cfnRole
+                - Effect: Allow
+                  Action:
+                    - logs:CreateLogGroup
+                    - logs:CreateLogStream
+                    - logs:PutLogEvents
+                  Resource: "*"
+    MyVPC:
+      Type: "AWS::EC2::VPC"
+      Properties:
+        CidrBlock: "10.0.0.0/16"
+        EnableDnsSupport: true
+        EnableDnsHostnames: true
+        Tags:
+          - Key: Name
+            Value: MyVPC
+
+    MySubnet:
+      Type: "AWS::EC2::Subnet"
+      Properties:
+        VpcId: !Ref MyVPC
+        CidrBlock: "10.0.1.0/24"
+        MapPublicIpOnLaunch: true
+        Tags:
+          - Key: Name
+            Value: MySubnet
+
+    MyInternetGateway:
+      Type: "AWS::EC2::InternetGateway"
+      Properties:
+        Tags:
+          - Key: Name
+            Value: MyInternetGateway
+
+    AttachGateway:
+      Type: "AWS::EC2::VPCGatewayAttachment"
+      Properties:
+        VpcId: !Ref MyVPC
+        InternetGatewayId: !Ref MyInternetGateway
+
+    MyRouteTable:
+      Type: "AWS::EC2::RouteTable"
+      Properties:
+        VpcId: !Ref MyVPC
+        Tags:
+          - Key: Name
+            Value: MyRouteTable
+
+    MyRoute:
+      Type: "AWS::EC2::Route"
+      DependsOn: AttachGateway
+      Properties:
+        RouteTableId: !Ref MyRouteTable
+        DestinationCidrBlock: "0.0.0.0/0"
+        GatewayId: !Ref MyInternetGateway
+
+    SubnetRouteTableAssociation:
+      Type: "AWS::EC2::SubnetRouteTableAssociation"
+      Properties:
+        SubnetId: !Ref MySubnet
+        RouteTableId: !Ref MyRouteTable
+
+    RDSInstance:
+      Type: "AWS::RDS::DBInstance"
+      Properties:
+        AllocatedStorage: 20
+        DBInstanceClass: db.t3.micro
+        Engine: postgres
+        EngineVersion: "13.3"
+        MasterUsername: ${env:DB_USERNAME}
+        MasterUserPassword: ${env:DB_PASSWORD}
+        DBName: ${env:DB_NAME}
+        VPCSecurityGroups:
+          - !GetAtt RDSSecurityGroup.GroupId
+        DBSubnetGroupName: !Ref MyDBSubnetGroup
+
+    RDSSecurityGroup:
+      Type: "AWS::EC2::SecurityGroup"
+      Properties:
+        GroupDescription: Enable access to RDS PostgreSQL
+        VpcId: !Ref MyVPC
+        SecurityGroupIngress:
+          - IpProtocol: tcp
+            FromPort: "5432"
+            ToPort: "5432"
+            CidrIp: "10.0.0.0/16"
+
+    MyDBSubnetGroup:
+      Type: "AWS::RDS::DBSubnetGroup"
+      Properties:
+        DBSubnetGroupDescription: Subnets available for the RDS DB Instance
+        SubnetIds:
+          - !Ref MySubnet
