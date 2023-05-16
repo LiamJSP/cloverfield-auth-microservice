@@ -1,11 +1,11 @@
-service: your-service-name
+service: cloverfield-authms
 
 provider:
   name: aws
   runtime: nodejs18.x
   stage: dev
   stackTags:
-    CreatedBy: CloverfieldAuthMS
+    CreatedBy: "CreatedBy CloverfieldAuthMS"
   region: us-east-1
   environment:
     JWT_SECRET: ${env:JWT_SECRET}
@@ -45,6 +45,7 @@ functions:
 plugins:
   - serverless-offline
   - serverless-dotenv-plugin
+  - serverless-plugin-resource-tagging
 
 custom:
   serverless-offline:
