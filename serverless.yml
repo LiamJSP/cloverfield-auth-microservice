@@ -5,7 +5,7 @@ provider:
   runtime: nodejs18.x
   stage: dev
   stackTags:
-    CreatedBy: "CreatedBy CloverfieldAuthMS"
+    CreatedBy: "CloverfieldAuthMS"
   region: us-east-1
   environment:
     JWT_SECRET: ${env:JWT_SECRET}
