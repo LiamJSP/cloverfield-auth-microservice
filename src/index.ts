@@ -13,9 +13,11 @@ app.use(express.json());
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const TOKEN_EXPIRATION_TIME = process.env.TOKEN_EXPIRATION_TIME || "1h";
-const AUTHY_API_KEY = process.env.AUTHY_API_KEY;
+//TS requires a deterministic value for AUTHY_API_KEY due to how this function expands to JS during build. This empty key will produce an Authy-specific error if it becomes the value during runtime.
+const AUTHY_API_KEY = process.env.AUTHY_API_KEY || "";
 const authyClient = authy(AUTHY_API_KEY);
 
+//Setup the connection object, instantiated later.
 const AppDataSource = new DataSource({
   type: "postgres",
   host: process.env.DB_HOST,
@@ -31,6 +33,7 @@ let initializedAppDataSource: DataSource;
 
 async function initialize(): Promise<DataSource> {
   if (!initializedAppDataSource) {
+    //Instantiate connection to DB during runtime
     await AppDataSource.initialize();
     console.log("Data Source has been initialized!");
     initializedAppDataSource = AppDataSource;
