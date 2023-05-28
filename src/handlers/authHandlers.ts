@@ -13,19 +13,21 @@ import { User } from "../entities/User";
 import { ActiveSession } from "../entities/ActiveSession";
 import crypto from 'crypto';
 
-//Used if a key is not manually set. You are intended to set a key manually - this is a failover in case the user does not.
+// Function to generate a default key with AES for JWT token generation
+// This is used if a key is not manually set
+// Generates a 256 bit key using the Node.js crypto library
 function generateDefaultKeyWithAES(): Buffer {
-  // Generate 32 random bytes (256 bits)
   const key: Buffer = crypto.randomBytes(32);
   return key;
 }
 
+// Configuration variables for JWT, token expiration time, and Authy
 const JWT_SECRET: string = process.env.JWT_SECRET || generateDefaultKeyWithAES().toString('base64');
 const TOKEN_EXPIRATION_TIME:string = process.env.TOKEN_EXPIRATION_TIME || "1h";
-const AUTHY_API_KEY:string =
-  process.env.AUTHY_API_KEY || "no_key_in_env";
+const AUTHY_API_KEY:string = process.env.AUTHY_API_KEY || "no_key_in_env";
 const authyClient = authy(AUTHY_API_KEY);
 
+// Helper function to create an API Gateway response
 export function createApiResponse(
   statusCode: number,
   body: any
@@ -36,16 +38,20 @@ export function createApiResponse(
   };
 }
 
+// Function to register a new user
 export async function register(
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> {
+  // Parses the request body
   const body = JSON.parse(event.body || "{}");
   const { username, password, email, phone_number, country_code } = body;
 
+  // Validates if all fields are provided
   if (!username || !password || !email || !phone_number || !country_code) {
     return createApiResponse(400, { error: "Missing required fields" });
   }
 
+  // Checks for existing user
   const userRepository = AppDataSource.manager.getRepository(User);
   const existingUser = await userRepository.findOne({ where: { username } });
 
@@ -53,8 +59,10 @@ export async function register(
     return createApiResponse(409, { error: "Username already exists" });
   }
 
+  // Hashes the user password
   const hashedPassword = await bcrypt.hash(password, 10);
 
+  // Registers the user in Authy, generates a secret, and saves the user in the database
   const registerUserResponse = await new Promise<APIGatewayProxyResult>(
     (resolve) => {
       authyClient.register_user(
@@ -70,7 +78,6 @@ export async function register(
               })
             );
           } else {
-            // Generate a base32-encoded secret
             const secret = speakeasy.generateSecret({ length: 20 });
 
             const newUser = userRepository.create({
@@ -82,7 +89,7 @@ export async function register(
 
             await userRepository.save(newUser);
 
-            // Generate the QR code for the Authy app
+            // Generates the OTP registration URL, encoded into a QR code for the Authy app
             const otpUrl = `otpauth://totp/${encodeURIComponent(
               newUser.username
             )}?secret=${encodeURIComponent(
@@ -112,16 +119,19 @@ export async function register(
 
   return registerUserResponse;
 }
-
 export async function login(
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> {
+  // Parses the request body
   const body = JSON.parse(event.body || "{}");
   const { username, password, authy_code } = body;
 
+  // Validates if all fields are provided
   if (!username || !password || !authy_code) {
     return createApiResponse(400, { error: "Missing required fields" });
   }
+
+  // Checks if the user exists
   const userRepository = AppDataSource.manager.getRepository(User);
   const user = await userRepository.findOne({ where: { username } });
 
@@ -129,28 +139,31 @@ export async function login(
     return createApiResponse(404, { error: "User not found" });
   }
 
+  // Verifies the user password
   const passwordMatch = await bcrypt.compare(password, user.password_hash);
 
   if (!passwordMatch) {
     return createApiResponse(401, { error: "Invalid password" });
   }
 
-  // Use speakeasy to verify the token locally
+  // Verifies the Authy token
   const verified = speakeasy.totp.verify({
     secret: user.secret,
     encoding: "base32",
     token: authy_code,
-    window: 2, // Allow a window of +/- 2 time steps to account for time drift
+    window: 2,
   });
 
   if (!verified) {
     return createApiResponse(401, { error: "Invalid Authy code" });
   }
 
+  // Signs the JWT and sets the token expiration time
   const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
     expiresIn: TOKEN_EXPIRATION_TIME,
   });
 
+  // Creates a new active session for the user, and set the auto-logout expiration date
   const activeSessionRepository =
     AppDataSource.manager.getRepository(ActiveSession);
   const expirationDate = new Date();
@@ -164,18 +177,22 @@ export async function login(
 
   await activeSessionRepository.save(newSession);
 
+  // Returns the JWT in the response
   return createApiResponse(200, { token });
 }
 
+// Function to check if a JWT token is valid
 export async function isTokenValid(
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> {
+  // Retrieves the token from the authorization header
   const token = event.headers.authorization?.split(" ")[1];
 
   if (!token) {
     return createApiResponse(401, { error: "No token provided" });
   }
 
+  // Verifies the JWT
   try {
     jwt.verify(token, JWT_SECRET);
     return createApiResponse(200, { isValid: true });
@@ -183,4 +200,3 @@ export async function isTokenValid(
     return createApiResponse(401, { error: "Invalid token", isValid: false });
   }
 }
-
