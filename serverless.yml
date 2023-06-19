@@ -59,7 +59,6 @@ custom:
     createRoute53Record: true
   customCertificate:
     certificateName: 'cloverfield-auth.redcloversoftware.ca'
-    idempotencyToken: 'cloverfieldauthredcloversoftwareca'
     hostedZoneNames: 'redcloversoftware.ca.'
     region: us-east-1
     enabled: true
