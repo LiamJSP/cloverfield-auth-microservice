@@ -20,23 +20,27 @@ provider:
 functions:
   app:
     handler: dist/lambda/handler.main
+    timeout: 30
     events:
       - http: ANY /
       - http: ANY /{proxy+}
   register:
     handler: dist/lambda/handler.main
+    timeout: 30
     events:
       - http:
           path: register
           method: post
   login:
     handler: dist/lambda/handler.main
+    timeout: 30
     events:
       - http:
           path: login
           method: post
   isTokenValid:
     handler: dist/lambda/handler.main
+    timeout: 30
     events:
       - http:
           path: isTokenValid
