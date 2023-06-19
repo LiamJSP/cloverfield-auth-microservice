@@ -87,7 +87,16 @@ export async function register(
               secret: secret.base32,
             });
 
-            await userRepository.save(newUser);
+            try {
+              await userRepository.save(newUser);
+
+              // Log successful user save
+              console.log(`Successfully saved user: ${username}`);
+            } catch (error) {
+              console.error('Error saving user to database:', error);
+              resolve(createApiResponse(500, { error: 'Error saving user to database' }));
+              return;
+            }
 
             // Generates the OTP registration URL, encoded into a QR code for the Authy app
             const otpUrl = `otpauth://totp/${encodeURIComponent(
