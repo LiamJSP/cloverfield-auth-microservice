@@ -45,11 +45,25 @@ functions:
 plugins:
   - serverless-offline
   - serverless-dotenv-plugin
+  - serverless-certificate-creator
   - serverless-plugin-resource-tagging
 
 custom:
   serverless-offline:
     httpPort: 3006
+  customDomain:
+    domainName: cloverfield-auth.redcloversoftware.ca
+    certificateName: 'cloverfield-auth.redcloversoftware.ca'
+    basePath: ''
+    stage: ${self:provider.stage}
+    createRoute53Record: true
+  customCertificate:
+    certificateName: 'cloverfield-auth.redcloversoftware.ca'
+    idempotencyToken: 'cloverfieldauthredcloversoftwareca'
+    hostedZoneNames: 'redcloversoftware.ca.'
+    region: us-east-1
+    enabled: true
+    rewriteRecords: false
 
 resources:
   Resources:
