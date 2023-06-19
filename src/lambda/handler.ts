@@ -12,12 +12,12 @@ export async function main(
   event: APIGatewayProxyEvent,
   context: Context
 ): Promise<APIGatewayProxyResult> {
+  console.log("Request received");
   // Initialize the application (connect to database, etc.) before handling the request
   await initialize();
 
   // The 'path' property of 'event' tells us which endpoint the client hit
   const path = event.path;
-  console.log("Request received: ", event);
 
   // We call different handlers based on the path
   // This is the main router/dispatcher for incoming requests
