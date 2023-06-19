@@ -65,6 +65,7 @@ export async function register(
   // Registers the user in Authy, generates a secret, and saves the user in the database
   const registerUserResponse = await new Promise<APIGatewayProxyResult>(
     (resolve) => {
+      console.log("Beginning Register Logic");
       authyClient.register_user(
         email,
         phone_number,

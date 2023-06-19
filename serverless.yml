@@ -7,6 +7,7 @@ provider:
   stackTags:
     CreatedBy: "CloverfieldAuthMS"
   region: us-east-1
+  role: AWSLambdaBasicExecutionRole
   environment:
     JWT_SECRET: ${env:JWT_SECRET}
     TOKEN_EXPIRATION_TIME: ${env:TOKEN_EXPIRATION_TIME}
@@ -20,12 +21,14 @@ provider:
 functions:
   app:
     handler: dist/lambda/handler.main
+    role: AWSLambdaBasicExecutionRole
     timeout: 30
     events:
       - http: ANY /
       - http: ANY /{proxy+}
   register:
     handler: dist/lambda/handler.main
+    role: AWSLambdaBasicExecutionRole
     timeout: 30
     events:
       - http:
@@ -33,6 +36,7 @@ functions:
           method: post
   login:
     handler: dist/lambda/handler.main
+    role: AWSLambdaBasicExecutionRole
     timeout: 30
     events:
       - http:
@@ -40,6 +44,7 @@ functions:
           method: post
   isTokenValid:
     handler: dist/lambda/handler.main
+    role: AWSLambdaBasicExecutionRole
     timeout: 30
     events:
       - http:
@@ -71,35 +76,6 @@ custom:
 
 resources:
   Resources:
-    AuthMicroserviceLambdaExecutionRole:
-      Type: AWS::IAM::Role
-      Properties:
-        AssumeRolePolicyDocument:
-          Version: "2012-10-17"
-          Statement:
-            - Effect: Allow
-              Principal:
-                Service:
-                  - lambda.amazonaws.com
-              Action:
-                - sts:AssumeRole
-        Policies:
-          - PolicyName: AuthMicroserviceLambdaExecutionPolicy
-            PolicyDocument:
-              Version: "2012-10-17"
-              Statement:
-                - Effect: Allow
-                  Action:
-                    - iam:PassRole
-                  Resource:
-                    - !Sub arn:aws:iam::${AWS::AccountId}:role/${self:service}-${self:provider.stage}-lambdaRole
-                    - !Sub arn:aws:iam::${AWS::AccountId}:role/${self:service}-${self:provider.stage}-cfnRole
-                - Effect: Allow
-                  Action:
-                    - logs:CreateLogGroup
-                    - logs:CreateLogStream
-                    - logs:PutLogEvents
-                  Resource: "*"
     MyVPC:
       Type: "AWS::EC2::VPC"
       Properties:
@@ -109,7 +85,6 @@ resources:
         Tags:
           - Key: Name
             Value: MyVPC
-
     MySubnetA:
       Type: "AWS::EC2::Subnet"
       Properties:
@@ -120,7 +95,6 @@ resources:
         Tags:
           - Key: Name
             Value: "MySubnetA"
-
     MySubnetB:
       Type: "AWS::EC2::Subnet"
       Properties:
@@ -131,77 +105,3 @@ resources:
         Tags:
           - Key: Name
             Value: "MySubnetB"
-
-    MyInternetGateway:
-      Type: "AWS::EC2::InternetGateway"
-      Properties:
-        Tags:
-          - Key: Name
-            Value: MyInternetGateway
-
-    AttachGateway:
-      Type: "AWS::EC2::VPCGatewayAttachment"
-      Properties:
-        VpcId: !Ref MyVPC
-        InternetGatewayId: !Ref MyInternetGateway
-
-    MyRouteTable:
-      Type: "AWS::EC2::RouteTable"
-      Properties:
-        VpcId: !Ref MyVPC
-        Tags:
-          - Key: Name
-            Value: MyRouteTable
-
-    MyRoute:
-      Type: "AWS::EC2::Route"
-      DependsOn: AttachGateway
-      Properties:
-        RouteTableId: !Ref MyRouteTable
-        DestinationCidrBlock: "0.0.0.0/0"
-        GatewayId: !Ref MyInternetGateway
-
-    SubnetRouteTableAssociationA:
-      Type: "AWS::EC2::SubnetRouteTableAssociation"
-      Properties:
-        SubnetId: !Ref MySubnetA
-        RouteTableId: !Ref MyRouteTable
-
-    SubnetRouteTableAssociationB:
-      Type: "AWS::EC2::SubnetRouteTableAssociation"
-      Properties:
-        SubnetId: !Ref MySubnetB
-        RouteTableId: !Ref MyRouteTable
-
-    RDSInstance:
-      Type: "AWS::RDS::DBInstance"
-      Properties:
-        AllocatedStorage: 20
-        DBInstanceClass: db.t3.micro
-        Engine: postgres
-        EngineVersion: "13.3"
-        MasterUsername: ${env:DB_USERNAME}
-        MasterUserPassword: ${env:DB_PASSWORD}
-        DBName: ${env:DB_NAME}
-        VPCSecurityGroups:
-          - !GetAtt RDSSecurityGroup.GroupId
-        DBSubnetGroupName: !Ref MyDBSubnetGroup
-
-    RDSSecurityGroup:
-      Type: "AWS::EC2::SecurityGroup"
-      Properties:
-        GroupDescription: Enable access to RDS PostgreSQL
-        VpcId: !Ref MyVPC
-        SecurityGroupIngress:
-          - IpProtocol: tcp
-            FromPort: "5432"
-            ToPort: "5432"
-            CidrIp: "10.0.0.0/16"
-
-    MyDBSubnetGroup:
-      Type: "AWS::RDS::DBSubnetGroup"
-      Properties:
-        DBSubnetGroupDescription: Subnets available for the RDS DB Instance
-        SubnetIds:
-          - !Ref MySubnetA
-          - !Ref MySubnetB
