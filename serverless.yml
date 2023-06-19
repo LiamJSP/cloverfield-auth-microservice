@@ -46,6 +46,7 @@ plugins:
   - serverless-offline
   - serverless-dotenv-plugin
   - serverless-certificate-creator
+  - serverless-domain-manager
   - serverless-plugin-resource-tagging
 
 custom:
