@@ -7,7 +7,6 @@ provider:
   stackTags:
     CreatedBy: "CloverfieldAuthMS"
   region: us-east-1
-  role: AWSLambdaBasicExecutionRole
   environment:
     JWT_SECRET: ${env:JWT_SECRET}
     TOKEN_EXPIRATION_TIME: ${env:TOKEN_EXPIRATION_TIME}
@@ -17,18 +16,23 @@ provider:
     DB_USERNAME: ${env:DB_USERNAME}
     DB_PASSWORD: ${env:DB_PASSWORD}
     DB_NAME: ${env:DB_NAME}
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "logs:CreateLogGroup"
+        - "logs:CreateLogStream"
+        - "logs:PutLogEvents"
+      Resource: "*"
 
 functions:
   app:
     handler: dist/lambda/handler.main
-    role: AWSLambdaBasicExecutionRole
     timeout: 30
     events:
       - http: ANY /
       - http: ANY /{proxy+}
   register:
     handler: dist/lambda/handler.main
-    role: AWSLambdaBasicExecutionRole
     timeout: 30
     events:
       - http:
@@ -36,7 +40,6 @@ functions:
           method: post
   login:
     handler: dist/lambda/handler.main
-    role: AWSLambdaBasicExecutionRole
     timeout: 30
     events:
       - http:
@@ -44,7 +47,6 @@ functions:
           method: post
   isTokenValid:
     handler: dist/lambda/handler.main
-    role: AWSLambdaBasicExecutionRole
     timeout: 30
     events:
       - http:
@@ -85,6 +87,7 @@ resources:
         Tags:
           - Key: Name
             Value: MyVPC
+
     MySubnetA:
       Type: "AWS::EC2::Subnet"
       Properties:
@@ -95,6 +98,7 @@ resources:
         Tags:
           - Key: Name
             Value: "MySubnetA"
+
     MySubnetB:
       Type: "AWS::EC2::Subnet"
       Properties:
@@ -105,6 +109,7 @@ resources:
         Tags:
           - Key: Name
             Value: "MySubnetB"
+
     MyInternetGateway:
       Type: "AWS::EC2::InternetGateway"
       Properties:
