@@ -3,9 +3,9 @@ import {
   APIGatewayProxyResult,
   Context,
 } from "aws-lambda";
+import { DataSource } from "typeorm";
 import * as speakeasy from "speakeasy";
 import * as QRCode from "qrcode";
-import { AppDataSource } from "../index";
 import * as bcrypt from "bcrypt";
 import * as jwt from "jsonwebtoken";
 import authy from "authy";
@@ -27,6 +27,28 @@ const TOKEN_EXPIRATION_TIME:string = process.env.TOKEN_EXPIRATION_TIME || "1h";
 const AUTHY_API_KEY:string = process.env.AUTHY_API_KEY || "no_key_in_env";
 const authyClient = authy(AUTHY_API_KEY);
 
+const AppDataSource = new DataSource({
+  type: "postgres",
+  host: process.env.DB_HOST,
+  port: Number(process.env.DB_PORT) || 5432,
+  username: process.env.DB_USERNAME,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  entities: [`${__dirname}/entities/*{.ts,.js}`],
+  synchronize: true,
+});
+
+let initializedAppDataSource: DataSource;
+
+async function initialize(): Promise<DataSource> {
+  if (!initializedAppDataSource) {
+    await AppDataSource.initialize();
+    console.log("Data Source has been initialized!");
+    initializedAppDataSource = AppDataSource;
+  }
+  return initializedAppDataSource;
+}
+
 // Helper function to create an API Gateway response
 export function createApiResponse(
   statusCode: number,
@@ -42,6 +64,7 @@ export function createApiResponse(
 export async function register(
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> {
+  await initialize();
   // Parses the request body
   const body = JSON.parse(event.body || "{}");
   const { username, password, email, phone_number, country_code } = body;
@@ -132,6 +155,7 @@ export async function register(
 export async function login(
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> {
+  await initialize();
   // Parses the request body
   const body = JSON.parse(event.body || "{}");
   const { username, password, authy_code } = body;
@@ -191,10 +215,12 @@ export async function login(
   return createApiResponse(200, { token });
 }
 
+
 // Function to check if a JWT token is valid
 export async function isTokenValid(
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> {
+  await initialize();
   // Retrieves the token from the authorization header
   const token = event.headers.authorization?.split(" ")[1];
 

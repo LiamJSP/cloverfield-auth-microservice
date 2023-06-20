@@ -28,33 +28,32 @@ provider:
           Resource: "*"
 
 functions:
-  app:
-    handler: dist/lambda/handler.main
-    timeout: 30
-    events:
-      - http: ANY /
-      - http: ANY /{proxy+}
   register:
-    handler: dist/lambda/handler.main
+    handler: dist/handlers/authHandlers.register
     timeout: 30
     events:
       - http:
           path: register
           method: post
+    role: AuthMicroserviceLambdaExecutionRole
+
   login:
-    handler: dist/lambda/handler.main
+    handler: dist/handlers/authHandlers.login
     timeout: 30
     events:
       - http:
           path: login
           method: post
+    role: AuthMicroserviceLambdaExecutionRole
+
   isTokenValid:
-    handler: dist/lambda/handler.main
+    handler: dist/handlers/authHandlers.isTokenValid
     timeout: 30
     events:
       - http:
           path: isTokenValid
           method: get
+    role: AuthMicroserviceLambdaExecutionRole
 
 plugins:
   - serverless-offline
@@ -81,6 +80,36 @@ custom:
 
 resources:
   Resources:
+    AuthMicroserviceLambdaExecutionRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action:
+                - sts:AssumeRole
+        Policies:
+          - PolicyName: AuthMicroserviceLambdaExecutionPolicy
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - iam:PassRole
+                  Resource:
+                    - !Sub arn:aws:iam::${AWS::AccountId}:role/${self:service}-${self:provider.stage}-lambdaRole
+                    - !Sub arn:aws:iam::${AWS::AccountId}:role/${self:service}-${self:provider.stage}-cfnRole
+                - Effect: Allow
+                  Action:
+                    - logs:CreateLogGroup
+                    - logs:CreateLogStream
+                    - logs:PutLogEvents
+                    - logs:DescribeLogStreams
+                  Resource: "*"
     MyVPC:
       Type: "AWS::EC2::VPC"
       Properties:
