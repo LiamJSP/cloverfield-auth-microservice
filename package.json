@@ -16,6 +16,7 @@
   "dependencies": {
     "@types/aws-serverless-express": "^3.3.5",
     "@types/node": "^18.16.3",
+    "@types/pg": "^8.10.2",
     "authy": "^1.4.0",
     "aws-sdk": "^2.1368.0",
     "aws-serverless-express": "^3.4.0",
@@ -23,7 +24,8 @@
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.0",
-    "pg": "^8.10.0",
+    "net": "^1.0.2",
+    "pg": "^8.11.0",
     "qrcode": "^1.5.3",
     "reflect-metadata": "^0.1.13",
     "serverless-plugin-resource-tagging": "^1.2.0",

@@ -12,6 +12,8 @@ import authy from "authy";
 import { User } from "../entities/User";
 import { ActiveSession } from "../entities/ActiveSession";
 import crypto from "crypto";
+import { Client } from 'pg';
+import net from 'net';
 
 // Function to generate a default key with AES for JWT token generation
 // This is used if a key is not manually set
@@ -42,10 +44,57 @@ async function initialize(AppDataSource: DataSource): Promise<DataSource> {
   return initializedAppDataSource;
 }
 
-async function safeInitialize(
-  AppDataSource: DataSource
-): Promise<APIGatewayProxyResult | DataSource> {
+async function checkHostReachability(host: string, port: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const socket = new net.Socket();
+
+    const onError = (error: Error) => {
+      console.log(`Error connecting to host ${host}:${port} - ${error.message}`);
+      socket.destroy();
+      reject(error);
+    };
+
+    socket.setTimeout(5000);
+    socket.once('error', onError);
+    socket.once('timeout', () => onError(new Error('Timeout in connecting to host')));
+
+    socket.connect(port, host, () => {
+      console.log(`Host ${host}:${port} is reachable`);
+      socket.end();
+      resolve();
+    });
+  });
+}
+
+async function checkPostgresService(host: string, port: number, user: string, password: string, database: string): Promise<void> {
+  const client = new Client({
+    host,
+    port,
+    user,
+    password,
+    database,
+  });
+
   try {
+    await client.connect();
+    console.log(`Postgres service is running on ${host}:${port}`);
+  } catch (error: any) {
+    if (error instanceof Error) {
+      console.log(`Error connecting to Postgres service on ${host}:${port} - ${error.message}`);
+    } else {
+      console.log(`Error connecting to Postgres service on ${host}:${port}`);
+    }
+    throw error;
+  } finally {
+    await client.end();
+  }
+}
+
+
+async function safeInitialize(AppDataSource: DataSource): Promise<APIGatewayProxyResult | DataSource> {
+  try {
+    await checkHostReachability(process.env.DB_HOST!, Number(process.env.DB_PORT));
+    await checkPostgresService(process.env.DB_HOST!, Number(process.env.DB_PORT), process.env.DB_USERNAME!, process.env.DB_PASSWORD!, process.env.DB_NAME!);
     const initializedDataSource = await initialize(AppDataSource);
     return initializedDataSource;
   } catch (error) {
