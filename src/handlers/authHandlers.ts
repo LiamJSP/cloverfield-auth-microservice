@@ -39,15 +39,45 @@ const AppDataSource = new DataSource({
 });
 
 let initializedAppDataSource: DataSource;
+let databaseConnectionTimer: NodeJS.Timeout;
 
 async function initialize(): Promise<DataSource> {
   if (!initializedAppDataSource) {
-    await AppDataSource.initialize();
-    console.log("Data Source has been initialized!");
-    initializedAppDataSource = AppDataSource;
+    databaseConnectionTimer = setTimeout(() => {
+      console.error("Database connection timeout after 6 seconds.");
+      clearTimeout(databaseConnectionTimer);
+      throw new Error("Database connection timeout");
+    }, 6000);
+
+    try {
+      await AppDataSource.initialize();
+      console.log("Data Source has been initialized!");
+      initializedAppDataSource = AppDataSource;
+      clearTimeout(databaseConnectionTimer);
+    } catch (error) {
+      console.error("Database connection error:", error);
+      clearTimeout(databaseConnectionTimer);
+      throw new Error("Database connection failed");
+    }
   }
   return initializedAppDataSource;
 }
+
+async function safeInitialize(): Promise<APIGatewayProxyResult | null> {
+  try {
+    await initialize();
+  } catch (error) {
+    let errorMessage = "An unknown error occurred.";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      console.error(errorMessage);
+    }
+    return createApiResponse(500, { error: errorMessage });
+  }
+  return null;
+}
+
+
 
 // Helper function to create an API Gateway response
 export function createApiResponse(
@@ -60,11 +90,17 @@ export function createApiResponse(
   };
 }
 
+
 // Function to register a new user
 export async function register(
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> {
-  await initialize();
+  console.log("Register fired, pre DB");
+
+  const initializationError = await safeInitialize();
+  if (initializationError) return initializationError;
+
+  console.log("DB initialized successfully.");
   // Parses the request body
   const body = JSON.parse(event.body || "{}");
   const { username, password, email, phone_number, country_code } = body;
@@ -152,10 +188,18 @@ export async function register(
 
   return registerUserResponse;
 }
+
+
+
 export async function login(
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> {
-  await initialize();
+  console.log("Register fired, pre DB");
+
+  const initializationError = await safeInitialize();
+  if (initializationError) return initializationError;
+
+  console.log("DB initialized successfully.");
   // Parses the request body
   const body = JSON.parse(event.body || "{}");
   const { username, password, authy_code } = body;
@@ -220,7 +264,12 @@ export async function login(
 export async function isTokenValid(
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> {
-  await initialize();
+  console.log("Register fired, pre DB");
+
+  const initializationError = await safeInitialize();
+  if (initializationError) return initializationError;
+
+  console.log("DB initialized successfully.");
   // Retrieves the token from the authorization header
   const token = event.headers.authorization?.split(" ")[1];
 
