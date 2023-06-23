@@ -37,6 +37,12 @@ functions:
           path: register
           method: post
     role: AuthMicroserviceLambdaExecutionRole
+    vpc:
+      securityGroupIds:
+        - !GetAtt RDSSecurityGroup.GroupId
+      subnetIds:
+        - !Ref MySubnetA
+        - !Ref MySubnetB
 
   login:
     handler: dist/handlers/authHandlers.login
@@ -46,6 +52,12 @@ functions:
           path: login
           method: post
     role: AuthMicroserviceLambdaExecutionRole
+    vpc:
+      securityGroupIds:
+        - !GetAtt RDSSecurityGroup.GroupId
+      subnetIds:
+        - !Ref MySubnetA
+        - !Ref MySubnetB
 
   isTokenValid:
     handler: dist/handlers/authHandlers.isTokenValid
@@ -55,6 +67,12 @@ functions:
           path: isTokenValid
           method: get
     role: AuthMicroserviceLambdaExecutionRole
+    vpc:
+      securityGroupIds:
+        - !GetAtt RDSSecurityGroup.GroupId
+      subnetIds:
+        - !Ref MySubnetA
+        - !Ref MySubnetB
 
 plugins:
   - serverless-offline
