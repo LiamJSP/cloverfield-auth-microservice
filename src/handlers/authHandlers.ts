@@ -8,7 +8,6 @@ import * as speakeasy from "speakeasy";
 import * as QRCode from "qrcode";
 import * as bcrypt from "bcrypt";
 import * as jwt from "jsonwebtoken";
-import authy from "authy";
 import { User } from "../entities/User";
 import { ActiveSession } from "../entities/ActiveSession";
 import crypto from "crypto";
@@ -124,9 +123,7 @@ function isApiGatewayResponse(object: any): object is APIGatewayProxyResult {
 
 
 // Function to register a new user
-export async function register(
-  event: APIGatewayProxyEvent
-): Promise<APIGatewayProxyResult> {
+export async function register(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   console.log("Register fired, pre DB");
 
   const AppDataSource = new DataSource({
@@ -142,27 +139,19 @@ export async function register(
 
   const initializedDataSourceOrError = await safeInitialize(AppDataSource);
   if (isApiGatewayResponse(initializedDataSourceOrError)) {
-    // This is an error
     return initializedDataSourceOrError;
   }
 
   console.log("DB initialized successfully.");
   const JWT_SECRET: string = process.env.JWT_SECRET || generateDefaultKeyWithAES().toString("base64");
-  const TOKEN_EXPIRATION_TIME: string = process.env.TOKEN_EXPIRATION_TIME || "1h";
-  const AUTHY_API_KEY: string = process.env.AUTHY_API_KEY || "no_key_in_env";
-  const authyClient = authy(AUTHY_API_KEY);
-  
 
-  // Parses the request body
   const body = JSON.parse(event.body || "{}");
-  const { username, password, email, phone_number, country_code } = body;
+  const { username, password, email } = body;
 
-  // Validates if all fields are provided
-  if (!username || !password || !email || !phone_number || !country_code) {
+  if (!username || !password || !email) {
     return createApiResponse(400, { error: "Missing required fields" });
   }
 
-  // Checks for existing user
   const userRepository = AppDataSource.manager.getRepository(User);
   const existingUser = await userRepository.findOne({ where: { username } });
 
@@ -170,85 +159,39 @@ export async function register(
     return createApiResponse(409, { error: "Username already exists" });
   }
 
-  // Hashes the user password
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  // Registers the user in Authy, generates a secret, and saves the user in the database
-  const registerUserResponse = await new Promise<APIGatewayProxyResult>(
-    (resolve) => {
-      console.log("Beginning Register Logic");
-      authyClient.register_user(
-        email,
-        phone_number,
-        country_code,
-        async (err, regRes) => {
-          if (err) {
-            console.error("Authy registration error:", err);
-            resolve(
-              createApiResponse(500, {
-                error: "Error registering user with Authy",
-              })
-            );
-          } else {
-            const secret = speakeasy.generateSecret({ length: 20 });
+  const secret = speakeasy.generateSecret({ length: 20 });
 
-            const newUser = userRepository.create({
-              username,
-              password_hash: hashedPassword,
-              authy_id: regRes.user.id,
-              secret: secret.base32,
-            });
+  const newUser = userRepository.create({
+    username,
+    password_hash: hashedPassword,
+    secret: secret.base32,
+  });
 
-            try {
-              await userRepository.save(newUser);
+  try {
+    await userRepository.save(newUser);
 
-              // Log successful user save
-              console.log(`Successfully saved user: ${username}`);
-            } catch (error) {
-              console.error("Error saving user to database:", error);
-              resolve(
-                createApiResponse(500, {
-                  error: "Error saving user to database",
-                })
-              );
-              return;
-            }
+    console.log(`Successfully saved user: ${username}`);
+  } catch (error) {
+    console.error("Error saving user to database:", error);
+    return createApiResponse(500, { error: "Error saving user to database" });
+  }
 
-            // Generates the OTP registration URL, encoded into a QR code for the Authy app
-            const otpUrl = `otpauth://totp/${encodeURIComponent(
-              newUser.username
-            )}?secret=${encodeURIComponent(
-              secret.base32
-            )}&issuer=RCS_Auth_Microservice`;
-            QRCode.toDataURL(otpUrl, (qrErr, qrDataUrl) => {
-              if (qrErr) {
-                resolve(
-                  createApiResponse(500, {
-                    error: "Error generating QR code for 2FA",
-                  })
-                );
-              } else {
-                resolve(
-                  createApiResponse(201, {
-                    message: "User registered successfully",
-                    qr_code_url: qrDataUrl,
-                  })
-                );
-              }
-            });
-          }
-        }
-      );
-    }
-  );
+  const otpUrl = `otpauth://totp/${encodeURIComponent(newUser.username)}?secret=${encodeURIComponent(secret.base32)}&issuer=RCS_Auth_Microservice`;
 
-  return registerUserResponse;
+  let qrDataUrl;
+  try {
+    qrDataUrl = await QRCode.toDataURL(otpUrl);
+  } catch (qrErr) {
+    return createApiResponse(500, { error: "Error generating QR code for 2FA" });
+  }
+
+  return createApiResponse(201, { message: "User registered successfully", qr_code_url: qrDataUrl });
 }
 
-export async function login(
-  event: APIGatewayProxyEvent
-): Promise<APIGatewayProxyResult> {
-  console.log("Register fired, pre DB");
+export async function login(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
+  console.log("Login fired, pre DB");
 
   const AppDataSource = new DataSource({
     type: "postgres",
@@ -263,7 +206,6 @@ export async function login(
 
   const initializedDataSourceOrError = await safeInitialize(AppDataSource);
   if (isApiGatewayResponse(initializedDataSourceOrError)) {
-    // This is an error
     return initializedDataSourceOrError;
   }
 
@@ -271,19 +213,14 @@ export async function login(
 
   const JWT_SECRET: string = process.env.JWT_SECRET || generateDefaultKeyWithAES().toString("base64");
   const TOKEN_EXPIRATION_TIME: string = process.env.TOKEN_EXPIRATION_TIME || "1h";
-  const AUTHY_API_KEY: string = process.env.AUTHY_API_KEY || "no_key_in_env";
-  const authyClient = authy(AUTHY_API_KEY);
 
-  // Parses the request body
   const body = JSON.parse(event.body || "{}");
   const { username, password, authy_code } = body;
 
-  // Validates if all fields are provided
   if (!username || !password || !authy_code) {
     return createApiResponse(400, { error: "Missing required fields" });
   }
 
-  // Checks if the user exists
   const userRepository = AppDataSource.manager.getRepository(User);
   const user = await userRepository.findOne({ where: { username } });
 
@@ -291,14 +228,12 @@ export async function login(
     return createApiResponse(404, { error: "User not found" });
   }
 
-  // Verifies the user password
   const passwordMatch = await bcrypt.compare(password, user.password_hash);
 
   if (!passwordMatch) {
     return createApiResponse(401, { error: "Invalid password" });
   }
 
-  // Verifies the Authy token
   const verified = speakeasy.totp.verify({
     secret: user.secret,
     encoding: "base32",
@@ -310,14 +245,11 @@ export async function login(
     return createApiResponse(401, { error: "Invalid Authy code" });
   }
 
-  // Signs the JWT and sets the token expiration time
   const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
     expiresIn: TOKEN_EXPIRATION_TIME,
   });
 
-  // Creates a new active session for the user, and set the auto-logout expiration date
-  const activeSessionRepository =
-    AppDataSource.manager.getRepository(ActiveSession);
+  const activeSessionRepository = AppDataSource.manager.getRepository(ActiveSession);
   const expirationDate = new Date();
   expirationDate.setHours(expirationDate.getHours() + 1);
 
@@ -329,15 +261,11 @@ export async function login(
 
   await activeSessionRepository.save(newSession);
 
-  // Returns the JWT in the response
   return createApiResponse(200, { token });
 }
 
-// Function to check if a JWT token is valid
-export async function isTokenValid(
-  event: APIGatewayProxyEvent
-): Promise<APIGatewayProxyResult> {
-  console.log("Register fired, pre DB");
+export async function isTokenValid(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
+  console.log("Token validation fired, pre DB");
 
   const AppDataSource = new DataSource({
     type: "postgres",
@@ -352,25 +280,19 @@ export async function isTokenValid(
 
   const initializedDataSourceOrError = await safeInitialize(AppDataSource);
   if (isApiGatewayResponse(initializedDataSourceOrError)) {
-    // This is an error
     return initializedDataSourceOrError;
   }
 
   console.log("DB initialized successfully.");
 
   const JWT_SECRET: string = process.env.JWT_SECRET || generateDefaultKeyWithAES().toString("base64");
-  const TOKEN_EXPIRATION_TIME: string = process.env.TOKEN_EXPIRATION_TIME || "1h";
-  const AUTHY_API_KEY: string = process.env.AUTHY_API_KEY || "no_key_in_env";
-  const authyClient = authy(AUTHY_API_KEY);
 
-  // Retrieves the token from the authorization header
   const token = event.headers.authorization?.split(" ")[1];
 
   if (!token) {
     return createApiResponse(401, { error: "No token provided" });
   }
 
-  // Verifies the JWT
   try {
     jwt.verify(token, JWT_SECRET);
     return createApiResponse(200, { isValid: true });
