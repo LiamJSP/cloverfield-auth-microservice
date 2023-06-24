@@ -200,7 +200,7 @@ export async function login(event: APIGatewayProxyEvent): Promise<APIGatewayProx
     username: process.env.DB_USERNAME,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
-    entities: [`${__dirname}/entities/*{.ts,.js}`],
+    entities: [`${__dirname}/../entities/*{.ts,.js}`],
     synchronize: true,
   });
 
@@ -215,9 +215,9 @@ export async function login(event: APIGatewayProxyEvent): Promise<APIGatewayProx
   const TOKEN_EXPIRATION_TIME: string = process.env.TOKEN_EXPIRATION_TIME || "1h";
 
   const body = JSON.parse(event.body || "{}");
-  const { username, password, authy_code } = body;
+  const { username, password, otp_token } = body;
 
-  if (!username || !password || !authy_code) {
+  if (!username || !password || !otp_token) {
     return createApiResponse(400, { error: "Missing required fields" });
   }
 
@@ -237,12 +237,12 @@ export async function login(event: APIGatewayProxyEvent): Promise<APIGatewayProx
   const verified = speakeasy.totp.verify({
     secret: user.secret,
     encoding: "base32",
-    token: authy_code,
+    token: otp_token,
     window: 2,
   });
 
   if (!verified) {
-    return createApiResponse(401, { error: "Invalid Authy code" });
+    return createApiResponse(401, { error: "Invalid OTP token" });
   }
 
   const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
@@ -274,7 +274,7 @@ export async function isTokenValid(event: APIGatewayProxyEvent): Promise<APIGate
     username: process.env.DB_USERNAME,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
-    entities: [`${__dirname}/entities/*{.ts,.js}`],
+    entities: [`${__dirname}/../entities/*{.ts,.js}`],
     synchronize: true,
   });
 

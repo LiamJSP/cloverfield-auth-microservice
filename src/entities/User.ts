@@ -19,10 +19,6 @@ export class User {
   @Column()
   secret: string;
 
-  // The 'authy_id' is the user's identifier in the Authy system, which is used to manage OTP
-  @Column()
-  authy_id: string;
-
   // OneToMany relationship, a user can have multiple active sessions by design - TODO: add privilege scope to tokens
   // The 'activeSession' function returns the associated active sessions for a given user
   @OneToMany(() => ActiveSession, (activeSession) => activeSession.user)
