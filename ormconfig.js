@@ -21,5 +21,11 @@ module.exports = {
     rejectUnauthorized: true,
     ca: fs.readFileSync('./certs/rds-ca-bundle.pem').toString(),
   },
+  extra: {
+      ssl: {
+          // Disregard mismatch between localhost and rds.amazonaws.com
+          rejectUnauthorized: false 
+      }
+  },
   options: {trustServerCertificate: true}
 };

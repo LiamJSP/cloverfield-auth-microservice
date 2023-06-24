@@ -13,6 +13,8 @@ import { ActiveSession } from "../entities/ActiveSession";
 import crypto from "crypto";
 import { Client } from 'pg';
 import net from 'net';
+import fs from 'fs';
+import path from 'path';
 
 // Function to generate a default key with AES for JWT token generation
 // This is used if a key is not manually set
@@ -135,6 +137,15 @@ export async function register(event: APIGatewayProxyEvent): Promise<APIGatewayP
     database: process.env.DB_NAME,
     entities: [`${__dirname}/../entities/*{.ts,.js}`],
     synchronize: true,
+    ssl: {
+      ca: fs.readFileSync(path.join(__dirname, '../certs/rds-ca-bundle.pem')).toString()
+    },
+    extra: {
+        ssl: {
+            // Disregard mismatch between localhost and rds.amazonaws.com
+            rejectUnauthorized: false 
+        }
+    } 
   });
 
   const initializedDataSourceOrError = await safeInitialize(AppDataSource);
@@ -202,6 +213,15 @@ export async function login(event: APIGatewayProxyEvent): Promise<APIGatewayProx
     database: process.env.DB_NAME,
     entities: [`${__dirname}/../entities/*{.ts,.js}`],
     synchronize: true,
+    ssl: {
+      ca: fs.readFileSync(path.join(__dirname, '../certs/rds-ca-bundle.pem')).toString()
+    },
+    extra: {
+        ssl: {
+            // Disregard mismatch between localhost and rds.amazonaws.com
+            rejectUnauthorized: false 
+        }
+    } 
   });
 
   const initializedDataSourceOrError = await safeInitialize(AppDataSource);
@@ -276,6 +296,15 @@ export async function isTokenValid(event: APIGatewayProxyEvent): Promise<APIGate
     database: process.env.DB_NAME,
     entities: [`${__dirname}/../entities/*{.ts,.js}`],
     synchronize: true,
+    ssl: {
+      ca: fs.readFileSync(path.join(__dirname, '../certs/rds-ca-bundle.pem')).toString()
+    },
+    extra: {
+        ssl: {
+            // Disregard mismatch between localhost and rds.amazonaws.com
+            rejectUnauthorized: false 
+        }
+    } 
   });
 
   const initializedDataSourceOrError = await safeInitialize(AppDataSource);

@@ -43,6 +43,9 @@ functions:
       subnetIds:
         - !Ref MySubnetA
         - !Ref MySubnetB
+    package:
+      include:
+        - dist/certs/**
 
   login:
     handler: dist/handlers/authHandlers.login
@@ -58,6 +61,9 @@ functions:
       subnetIds:
         - !Ref MySubnetA
         - !Ref MySubnetB
+    package:
+      include:
+        - dist/certs/**
 
   isTokenValid:
     handler: dist/handlers/authHandlers.isTokenValid
@@ -73,6 +79,9 @@ functions:
       subnetIds:
         - !Ref MySubnetA
         - !Ref MySubnetB
+    package:
+      include:
+        - dist/certs/**
 
 plugins:
   - serverless-offline

@@ -7,7 +7,7 @@
     "prettify": "prettier --write .",
     "start": "node dist/index.js",
     "dev": "nodemon --watch 'src/**/*.ts' --ignore 'src/**/*.spec.ts' --exec 'ts-node' src/index.ts",
-    "build": "tsc",
+    "build": "tsc && mkdir -p dist/certs && curl https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem > dist/certs/rds-ca-bundle.pem",
     "deploy": "sls deploy || sls remove"
   },
   "keywords": [],
@@ -26,6 +26,7 @@
     "fs": "^0.0.1-security",
     "jsonwebtoken": "^9.0.0",
     "net": "^1.0.2",
+    "path": "^0.12.7",
     "pg": "^8.11.0",
     "qrcode": "^1.5.3",
     "reflect-metadata": "^0.1.13",
