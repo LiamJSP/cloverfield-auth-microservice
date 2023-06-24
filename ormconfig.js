@@ -1,3 +1,5 @@
+const fs = require('fs');
+
 module.exports = {
   type: "postgres",
   host: process.env.DB_HOST,
@@ -16,11 +18,7 @@ module.exports = {
     subscribersDir: "src/subscribers",
   },
   ssl: {
-    rejectUnauthorized: false
+    rejectUnauthorized: true,
+    ca: fs.readFileSync('./certs/rds-ca-bundle.pem').toString(),
   },
-  extra: {
-    ssl: {
-      rejectUnauthorized: false
-    }
-  }
 };
