@@ -8,7 +8,7 @@ module.exports = {
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   synchronize: true,
-  logging: false,
+  logging: true,
   entities: ["src/entities/**/*.ts"],
   migrations: ["src/migrations/**/*.ts"],
   subscribers: ["src/subscribers/**/*.ts"],
@@ -21,4 +21,5 @@ module.exports = {
     rejectUnauthorized: true,
     ca: fs.readFileSync('./certs/rds-ca-bundle.pem').toString(),
   },
+  options: {trustServerCertificate: true}
 };
