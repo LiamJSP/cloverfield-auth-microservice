@@ -11,7 +11,6 @@ provider:
   environment:
     JWT_SECRET: ${env:JWT_SECRET}
     TOKEN_EXPIRATION_TIME: ${env:TOKEN_EXPIRATION_TIME}
-    AUTHY_API_KEY: ${env:AUTHY_API_KEY}
     DB_HOST: !GetAtt RDSInstance.Endpoint.Address
     DB_PORT: !GetAtt RDSInstance.Endpoint.Port
     DB_USERNAME: ${env:DB_USERNAME}
