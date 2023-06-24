@@ -211,13 +211,14 @@ resources:
         AllocatedStorage: 20
         DBInstanceClass: db.t3.micro
         Engine: postgres
-        EngineVersion: "13.3"
+        EngineVersion: "15"
         MasterUsername: ${env:DB_USERNAME}
         MasterUserPassword: ${env:DB_PASSWORD}
         DBName: ${env:DB_NAME}
         VPCSecurityGroups:
           - !GetAtt RDSSecurityGroup.GroupId
         DBSubnetGroupName: !Ref MyDBSubnetGroup
+        AutoMinorVersionUpgrade: true
 
     RDSSecurityGroup:
       Type: "AWS::EC2::SecurityGroup"
