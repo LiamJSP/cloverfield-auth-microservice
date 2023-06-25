@@ -220,7 +220,7 @@ resources:
         AllocatedStorage: 20
         DBInstanceClass: db.t3.micro
         Engine: postgres
-        EngineVersion: "15"
+        EngineVersion: "14"
         MasterUsername: ${env:DB_USERNAME}
         MasterUserPassword: ${env:DB_PASSWORD}
         DBName: ${env:DB_NAME}
