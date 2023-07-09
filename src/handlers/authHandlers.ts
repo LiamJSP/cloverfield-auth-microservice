@@ -316,8 +316,8 @@ export async function isTokenValid(event: APIGatewayProxyEvent): Promise<APIGate
 
   const JWT_SECRET: string = process.env.JWT_SECRET || generateDefaultKeyWithAES().toString("base64");
 
-  const token = event.headers.authorization?.split(" ")[1];
-  console.log("token: " + JSON.stringify(token) + " event header: " + JSON.stringify(event.headers.authorization) + " total headers: " + JSON.stringify(event.headers) + " event itself: " + JSON.stringify(event));
+  const token = event.headers.Authorization?.split(" ")[1];
+  console.log("event: " + JSON.stringify(event));
   if (!token) {
     return createApiResponse(401, { error: "No token provided" });
   }
